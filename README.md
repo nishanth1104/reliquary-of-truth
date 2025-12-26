@@ -100,6 +100,16 @@ Week 1 complete. Proof-gated delivery implemented.
 
 ---
 
+## Non-goals
+
+- Replacing human engineers
+- One-shot code generation
+- Maximizing speed over correctness
+- Solving ambiguous requirements silently
+
+---
+
 ## License
 
 MIT
+
