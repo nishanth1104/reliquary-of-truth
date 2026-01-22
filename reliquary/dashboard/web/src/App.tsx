@@ -67,43 +67,60 @@ function App() {
       )}
 
       <h2>Recent Runs</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ borderBottom: '2px solid #ddd' }}>
-            <th style={{ textAlign: 'left', padding: '10px' }}>Status</th>
-            <th style={{ textAlign: 'left', padding: '10px' }}>Work Item</th>
-            <th style={{ textAlign: 'left', padding: '10px' }}>Title</th>
-            <th style={{ textAlign: 'left', padding: '10px' }}>Repo</th>
-            <th style={{ textAlign: 'left', padding: '10px' }}>Attempts</th>
-            <th style={{ textAlign: 'left', padding: '10px' }}>Completed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.map((run) => (
-            <tr key={run.work_item_id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '10px' }}>
-                <span style={{
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  background: getStatusColor(run.final_status),
-                  color: 'white'
-                }}>
-                  {run.final_status}
-                </span>
-              </td>
-              <td style={{ padding: '10px', fontFamily: 'monospace' }}>{run.work_item_id}</td>
-              <td style={{ padding: '10px' }}>{run.ticket_title}</td>
-              <td style={{ padding: '10px' }}>{run.repo_name}</td>
-              <td style={{ padding: '10px' }}>{run.implement_attempts}</td>
-              <td style={{ padding: '10px', fontSize: '12px', color: '#666' }}>
-                {new Date(run.completed_at).toLocaleString()}
-              </td>
+      {runs.length === 0 ? (
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
+          background: '#f9f9f9',
+          borderRadius: '8px',
+          border: '2px dashed #ddd'
+        }}>
+          <p style={{ fontSize: '18px', color: '#666', margin: '0 0 10px 0' }}>No runs yet</p>
+          <p style={{ fontSize: '14px', color: '#999' }}>
+            Run your first task with: <code style={{ background: '#eee', padding: '2px 8px', borderRadius: '4px' }}>
+              python -m reliquary run --repo ../your-repo --task "Your task"
+            </code>
+          </p>
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #ddd' }}>
+              <th style={{ textAlign: 'left', padding: '10px' }}>Status</th>
+              <th style={{ textAlign: 'left', padding: '10px' }}>Work Item</th>
+              <th style={{ textAlign: 'left', padding: '10px' }}>Title</th>
+              <th style={{ textAlign: 'left', padding: '10px' }}>Repo</th>
+              <th style={{ textAlign: 'left', padding: '10px' }}>Attempts</th>
+              <th style={{ textAlign: 'left', padding: '10px' }}>Completed</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {runs.map((run) => (
+              <tr key={run.work_item_id} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '10px' }}>
+                  <span style={{
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    background: getStatusColor(run.final_status),
+                    color: 'white'
+                  }}>
+                    {run.final_status}
+                  </span>
+                </td>
+                <td style={{ padding: '10px', fontFamily: 'monospace' }}>{run.work_item_id}</td>
+                <td style={{ padding: '10px' }}>{run.ticket_title}</td>
+                <td style={{ padding: '10px' }}>{run.repo_name}</td>
+                <td style={{ padding: '10px' }}>{run.implement_attempts}</td>
+                <td style={{ padding: '10px', fontSize: '12px', color: '#666' }}>
+                  {new Date(run.completed_at).toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

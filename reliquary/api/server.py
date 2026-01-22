@@ -36,7 +36,7 @@ def list_runs(
     runs = runs[offset:]
 
     return {
-        "runs": [r.model_dump() for r in runs],
+        "runs": [r.dict() for r in runs],
         "count": len(runs)
     }
 
@@ -50,7 +50,7 @@ def get_run(work_item_id: str):
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
 
-    return run.model_dump()
+    return run.dict()
 
 
 @app.get("/runs/{work_item_id}/evidence")
