@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "description": "Default Reliquary of Truth policy rules",
+  "rules": [
+    {
+      "rule_id": "no_auth_without_tests",
+      "name": "Auth changes require tests",
+      "rule_type": "gate",
+      "condition": "risk_factors['modifies_auth'] and len(evidence.test_runs) == 0",
+      "action": "block"
+    },
+    {
+      "rule_id": "large_changes_warning",
+      "name": "Large changes should be reviewed",
+      "rule_type": "warning",
+      "condition": "risk_factors['large_change']",
+      "action": "warn"
+    },
+    {
+      "rule_id": "migration_safety",
+      "name": "Migration changes require careful review",
+      "rule_type": "warning",
+      "condition": "risk_factors['modifies_migrations']",
+      "action": "warn"
+    },
+    {
+      "rule_id": "critical_path_audit",
+      "name": "Critical path modifications are audited",
+      "rule_type": "audit",
+      "condition": "risk_factors['modifies_critical_paths']",
+      "action": "log"
+    }
+  ]
+}

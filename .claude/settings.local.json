@@ -12,7 +12,13 @@
       "Bash(ls:*)",
       "Bash(pip install:*)",
       "Bash(.venv/Scripts/pip install:*)",
-      "Bash(.venv/Scripts/python -m pytest -v)"
+      "Bash(.venv/Scripts/python -m pytest -v)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git remote remove:*)",
+      "Bash(git config:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git pull:*)"
     ]
   }
 }
