@@ -4,6 +4,8 @@ from langchain_openai import ChatOpenAI
 
 from reliquary.tools.fs_tools import list_tree, read_text
 from reliquary.schemas.ticket import TicketSpec
+from reliquary.schemas.help import HelpRequest
+from reliquary.agents.helpers import pick_domain_from_ticket_text
 
 load_dotenv()
 
@@ -30,6 +32,77 @@ Rules:
 - Include the COMPLETE file content for each file you modify.
 """
 
+HELP_DECIDER_SYSTEM = """You are the Owning Software Engineer in the Reliquary of Truth.
+
+Decide if you have enough information to safely implement the ticket with minimal changes.
+
+If the repository appears to be a skeleton (missing key files) OR the ticket requires framework-specific
+knowledge not present in the provided context, you should request help from the appropriate specialist.
+
+Return JSON ONLY:
+{
+  "need_help": true|false,
+  "question": "A single, concrete question to ask a specialist (no code).",
+  "why": "Short reason"
+}
+"""
+
+
+def _strip_code_fences(txt: str) -> str:
+    txt = (txt or "").strip()
+    if txt.startswith("```"):
+        lines = [l for l in txt.split("\n") if l.strip() not in ("```", "```json")]
+        txt = "\n".join(lines).strip()
+    return txt
+
+
+def maybe_request_help(repo_path: str, ticket: TicketSpec, attempt: int) -> HelpRequest | None:
+    """Week 2: Ask whether we should request specialist help before writing a patch.
+
+    Goal: avoid 'guessing under pressure'. If we are missing repo context, we ask a specialist.
+    """
+    import json
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    llm = ChatOpenAI(model=model, temperature=0)
+
+    files = list_tree(repo_path, max_files=200)
+    ticket_text = (
+        f"TITLE: {ticket.title}\n"
+        f"PROBLEM: {ticket.problem_statement}\n"
+        f"ACCEPTANCE: {ticket.acceptance_criteria}\n"
+        f"CONSTRAINTS: {ticket.constraints}\n"
+        f"OUT_OF_SCOPE: {ticket.out_of_scope}\n"
+    )
+
+    user = {
+        "ticket": ticket_text,
+        "repo_files": files,
+        "note": "If key entrypoints/framework are unclear, request help.",
+    }
+
+    resp = llm.invoke([("system", HELP_DECIDER_SYSTEM), ("user", json.dumps(user))])
+    txt = _strip_code_fences(resp.content)
+    data = json.loads(txt)
+
+    if not data.get("need_help"):
+        return None
+
+    domain = pick_domain_from_ticket_text(ticket.problem_statement + " " + " ".join(ticket.domain_tags))
+    question = (data.get("question") or "").strip() or "What is the expected tech stack / key entrypoint files for this repo?"
+    why = (data.get("why") or "Need more context").strip()
+
+    context = f"WHY: {why}\n\nTICKET:\n{ticket_text}\n\nREPO_FILES:\n{files}"
+
+    return HelpRequest(
+        request_id=f"help_{attempt}",
+        domain=domain,
+        question=question,
+        context=context,
+        attempt=attempt,
+    )
+
+
 def make_plan(ticket: TicketSpec) -> list[str]:
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     llm = ChatOpenAI(model=model, temperature=0)
@@ -42,10 +115,10 @@ def make_plan(ticket: TicketSpec) -> list[str]:
         "out_of_scope": ticket.out_of_scope,
     }
     resp = llm.invoke([("system", PLAN_SYSTEM), ("user", str(payload))])
-    plan_json = resp.content
-    # simple parse without extra deps
+
     import json
-    return json.loads(plan_json)["plan"]
+    return json.loads(resp.content)["plan"]
+
 
 def generate_patch(repo_path: str, ticket: TicketSpec) -> str:
     import json
@@ -58,7 +131,7 @@ def generate_patch(repo_path: str, ticket: TicketSpec) -> str:
 
     files = list_tree(repo_path, max_files=200)
 
-    # Provide key file contents if they exist (week1: keep small)
+    # Provide key file contents if they exist (Week 1-style: keep small)
     context_parts = []
     for rel in files:
         if rel in ("app.py", "tests/test_app.py"):
@@ -76,52 +149,40 @@ def generate_patch(repo_path: str, ticket: TicketSpec) -> str:
 
     user_msg = f"{ticket_text}\n\nREPO_FILES:\n{files}\n\nCONTEXT:\n{ctx}\n\nReturn JSON with modified files."
     resp = llm.invoke([("system", PATCH_SYSTEM), ("user", user_msg)])
-    content = resp.content.strip()
+    content = _strip_code_fences(resp.content)
 
-    # Remove markdown code fences if present
-    if content.startswith("```"):
-        lines = content.split("\n")
-        lines = [l for l in lines if not l.strip() in ("```", "```json")]
-        content = "\n".join(lines)
-
-    # Parse JSON response
     data = json.loads(content)
 
-    # Generate diff for each file using git diff --no-index
+    # Generate unified diffs using git diff --no-index for each file
     all_diffs = []
     with tempfile.TemporaryDirectory() as tmpdir:
         for file_mod in data["files"]:
             file_path = file_mod["path"]
             file_content = file_mod["content"]
 
-            # Write new content to temp file
             temp_file = Path(tmpdir) / "new"
             temp_file.write_text(file_content, encoding="utf-8")
 
-            # Get original file path
             orig_file = Path(repo_path) / file_path
 
-            # Generate diff
             result = subprocess.run(
                 ["git", "diff", "--no-index", str(orig_file), str(temp_file)],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
-            # git diff --no-index returns exit code 1 when there are differences (which is expected)
             if result.stdout:
-                # Fix the paths in the diff to use proper git format
                 diff_lines = result.stdout.split("\n")
-                fixed_diff = []
+                fixed = []
                 for line in diff_lines:
-                    if line.startswith("---"):
-                        fixed_diff.append(f"--- a/{file_path}")
-                    elif line.startswith("+++"):
-                        fixed_diff.append(f"+++ b/{file_path}")
-                    elif line.startswith("diff --git"):
-                        fixed_diff.append(f"diff --git a/{file_path} b/{file_path}")
+                    if line.startswith("diff --git"):
+                        fixed.append(f"diff --git a/{file_path} b/{file_path}")
+                    elif line.startswith("--- "):
+                        fixed.append(f"--- a/{file_path}")
+                    elif line.startswith("+++ "):
+                        fixed.append(f"+++ b/{file_path}")
                     else:
-                        fixed_diff.append(line)
-                all_diffs.append("\n".join(fixed_diff))
+                        fixed.append(line)
+                all_diffs.append("\n".join(fixed))
 
     return "\n".join(all_diffs) if all_diffs else "No changes detected"
