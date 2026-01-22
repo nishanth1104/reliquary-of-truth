@@ -258,10 +258,7 @@ cd reliquary/dashboard/web
 npm run dev
 ```
 
-**Access:**
-- **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Dashboard**: http://localhost:3000
+
 
 ---
 
@@ -377,10 +374,8 @@ npm run dev
 
 ## 📡 API Documentation
 
-### Base URL
-```
-http://localhost:8000
-```
+
+
 
 ### Endpoints
 
@@ -484,18 +479,7 @@ GET /stats
 }
 ```
 
-### API Testing
 
-```bash
-# Test API is running
-curl http://localhost:8000/
-
-# Get statistics
-curl http://localhost:8000/stats
-
-# List all runs
-curl http://localhost:8000/runs | jq
-```
 
 ---
 
@@ -892,34 +876,7 @@ python -m reliquary query --repo my-repo --limit 10
 python -m reliquary stats
 ```
 
-### API Quick Reference
 
-```bash
-# Health check
-curl http://localhost:8000/
-
-# List runs
-curl http://localhost:8000/runs
-
-# Get run details
-curl http://localhost:8000/runs/abc123
-
-# Get evidence
-curl http://localhost:8000/runs/abc123/evidence
-
-# Get statistics
-curl http://localhost:8000/stats
-
-# Provide info (HITL)
-curl -X POST http://localhost:8000/runs/abc123/provide_info \
-  -H "Content-Type: application/json" \
-  -d '{"answer": "Use FastAPI for the API"}'
-
-# Approve run (HITL)
-curl -X POST http://localhost:8000/runs/abc123/approve \
-  -H "Content-Type: application/json" \
-  -d '{"approved": true, "reason": "LGTM"}'
-```
 
 ---
 
@@ -932,3 +889,4 @@ curl -X POST http://localhost:8000/runs/abc123/approve \
 **Reliquary of Truth** © 2026
 
 </div>
+
